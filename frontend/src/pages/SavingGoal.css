@@ -1,0 +1,460 @@
+/* src/components/SavingsGoal.css */
+
+/* Modal Overlay */
+.savings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.savings-modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s ease;
+}
+
+/* Modal Header */
+.savings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  border-bottom: 2px solid #f1f5f9;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px 20px 0 0;
+  color: white;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.savings-modal-header i {
+  font-size: 24px;
+}
+
+.savings-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.close-savings-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-savings-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+/* Form */
+form {
+  padding: 32px;
+}
+
+/* Form Groups */
+.savings-form-group {
+  margin-bottom: 24px;
+}
+
+.savings-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #334155;
+  font-size: 15px;
+}
+
+.savings-form-group label i {
+  margin-right: 10px;
+  color: #667eea;
+}
+
+/* Inputs */
+.savings-form-group input[type="text"],
+.savings-form-group input[type="number"],
+.savings-form-group input[type="date"],
+.savings-form-group select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: white;
+  color: #334155;
+}
+
+.savings-form-group input[type="text"]:focus,
+.savings-form-group input[type="number"]:focus,
+.savings-form-group input[type="date"]:focus,
+.savings-form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Amount Input */
+.amount-input {
+  position: relative;
+}
+
+.amount-currency {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  color: #64748b;
+}
+
+.amount-input input {
+  padding-left: 40px !important;
+}
+
+/* Grid Layouts */
+.amounts-grid,
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Progress Bar */
+.progress-container {
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.progress-bar {
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-text {
+  font-weight: 600;
+  color: #334155;
+}
+
+.progress-percentage {
+  background: #10b981;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Quick Goal Buttons */
+.quick-goal-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.goal-btn {
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: white;
+}
+
+.goal-btn.emergency {
+  background: linear-gradient(135deg, #ef4444, #f87171);
+}
+
+.goal-btn.vacation {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+}
+
+.goal-btn.gadget {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+}
+
+.goal-btn.education {
+  background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+}
+
+.goal-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Timeline Buttons */
+.timeline-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.timeline-btn {
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.timeline-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.timeline-btn:hover:not(.active) {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+/* Checkbox */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #334155;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
+}
+
+/* Summary Card */
+.summary-card {
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #cbd5e1;
+  margin: 24px 0;
+}
+
+.summary-card h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #334155;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #334155;
+  font-size: 14px;
+}
+
+.priority-badge {
+  color: white !important;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-align: center;
+  text-transform: capitalize;
+  font-size: 12px;
+  width: fit-content;
+}
+
+.remaining {
+  color: #ef4444 !important;
+}
+
+/* Form Actions */
+.savings-form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.savings-btn-cancel,
+.savings-btn-submit {
+  flex: 1;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.savings-btn-cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.savings-btn-cancel:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.savings-btn-submit {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+}
+
+.savings-btn-submit:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.savings-btn-submit:not(:disabled):hover {
+  background: linear-gradient(135deg, #0da271, #2db688);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Savings Tips */
+.savings-tips {
+  margin-top: 32px;
+  padding: 20px;
+  background: #f0f9ff;
+  border-radius: 12px;
+  border-left: 4px solid #0ea5e9;
+}
+
+.savings-tips h4 {
+  margin-top: 0;
+  color: #0369a1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.savings-tips ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.savings-tips li {
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: 14px;
+}
+
+/* Hints */
+.savings-hint {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .savings-modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .amounts-grid,
+  .options-grid,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .quick-goal-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .savings-form-actions {
+    flex-direction: column;
+  }
+  
+  form {
+    padding: 24px;
+  }
+}
