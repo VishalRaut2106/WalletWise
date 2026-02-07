@@ -840,7 +840,7 @@ app.get('/api/budget/stats/summary', protect, async (req, res) => {
 // ==================== SAVINGS GOALS ROUTES ====================
 
 // Create Savings Goal - SIMPLIFIED
-app.post('/api/savings-goals', sanitizeInput, protect, async (req, res) => {
+app.post('/api/savings-goals', protect, sanitizeInput, async (req, res) => {
   try {
     console.log('\n🎯 CREATE SAVINGS GOAL REQUEST');
     console.log('User ID:', req.userId);
