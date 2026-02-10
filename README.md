@@ -242,7 +242,7 @@ To act as a **financial checkpoint** before a purchase is made.
 
 #### 🔍 Decision Inputs
 
-The system evaluates:
+**The system evaluates:**
 
 | Factor | Assessment |
 |--------|------------|
@@ -338,7 +338,7 @@ npm install
 
 # Start the development server
 npm start
-
+```
 
 ---
 
