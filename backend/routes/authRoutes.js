@@ -7,7 +7,10 @@ const {
   userLoginSchema,
   userUpdateSchema,
   verifyEmailSchema,
-  resendOtpSchema
+  resendOtpSchema,
+  forgotPasswordRequestSchema,
+  forgotPasswordVerifySchema,
+  resetPasswordSchema
 } = require('../utils/validationSchemas');
 const authController = require('../controllers/authController');
 
@@ -19,6 +22,12 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: 'Too many attempts. Please try again later.'
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 30,
+  message: 'Too many attempts from this IP. Please try again in 5 minutes.'
 });
 
 router.post('/register', authLimiter, validate(userRegisterSchema), authController.register);
