@@ -29,6 +29,7 @@
   margin: 0.5rem 0;
   background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -276,14 +277,7 @@
   font-size: 1rem;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 2.5rem 1rem;
-  color: var(--text-muted);
-  background: rgba(99, 102, 241, 0.02);
-  border-radius: var(--radius-lg);
-  border: 1px dashed var(--border-subtle);
-}
+
 
 .page-loading,
 .page-error {

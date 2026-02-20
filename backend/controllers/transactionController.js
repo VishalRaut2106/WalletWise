@@ -50,42 +50,36 @@ const addTransaction = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Type must be either income or expense' });
         }
 
-await withTransaction(async (session) => {
+        await withTransaction(async (session) => {
+            let nextExecutionDate = null;
 
-    let nextExecutionDate = null;
+            if (isRecurring && recurringInterval) {
+                const now = new Date();
 
-    if (isRecurring && recurringInterval) {
-        const now = new Date();
+                if (recurringInterval === "daily") {
+                    now.setDate(now.getDate() + 1);
+                } else if (recurringInterval === "weekly") {
+                    now.setDate(now.getDate() + 7);
+                } else if (recurringInterval === "monthly") {
+                    now.setMonth(now.getMonth() + 1);
+                }
 
-        if (recurringInterval === "daily") {
-            now.setDate(now.getDate() + 1);
-        } else if (recurringInterval === "weekly") {
-            now.setDate(now.getDate() + 7);
-        } else if (recurringInterval === "monthly") {
-            now.setMonth(now.getMonth() + 1);
-        }
+                nextExecutionDate = now;
+            }
 
-        nextExecutionDate = now;
-    }
-
-    const transaction = new Transaction({
-        userId,
-        type,
-        amount: numericAmount,
-        category: typeof category === 'string' ? category.trim().toLowerCase() : category,
-        description: typeof description === 'string' ? description.trim() : description,
-        paymentMethod: paymentMethod || 'cash',
-        mood: mood || 'neutral',
-        ...(date ? { date } : {}),
-        isRecurring: isRecurring || false,
-        recurringInterval: recurringInterval || null,
-        nextExecutionDate
-    });
-
-    await transaction.save({ session });
-
-});
-
+            const transaction = new Transaction({
+                userId,
+                type,
+                amount: numericAmount,
+                category: typeof category === 'string' ? category.trim().toLowerCase() : category,
+                description: typeof description === 'string' ? description.trim() : description,
+                paymentMethod: paymentMethod || 'cash',
+                mood: mood || 'neutral',
+                ...(date ? { date } : {}),
+                isRecurring: isRecurring || false,
+                recurringInterval: recurringInterval || null,
+                nextExecutionDate
+            });
 
             await transaction.save({ session });
 
@@ -95,7 +89,7 @@ await withTransaction(async (session) => {
                 $inc: { walletBalance: balanceChange }
             }, { session });
 
-            res.status(201).json({
+            return res.status(201).json({
                 success: true,
                 message: 'Transaction added successfully',
                 transaction: {

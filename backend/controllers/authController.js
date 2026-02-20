@@ -725,52 +725,6 @@ Please do not share it with anyone.
   }
 };
 
-const resetPassword = async (req, res) => {
-  try {
-    const parsed = resetPasswordSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: parsed.error.errors[0]?.message || 'Invalid input'
-      });
-    }
-
-    const { email, otp, newPassword } = parsed.data;
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    if (!user.passwordResetOtpHash || !user.passwordResetOtpExpires) {
-      return res.status(400).json({ success: false, message: 'No OTP requested' });
-    }
-
-    if (user.passwordResetOtpExpires < new Date()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-
-    const isMatch = user.passwordResetOtpHash === hashOtp(String(otp).trim());
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    await user.setPassword(newPassword);
-
-
-    user.passwordResetOtpHash = null;
-    user.passwordResetOtpExpires = null;
-    user.passwordResetOtpSentAt = null;
-
-    await user.save();
-
-    return res.json({ success: true, message: 'Password reset successfully. Please login.' });
-
-  } catch (error) {
-    console.error('Reset password error:', error);
-    return res.status(500).json({ success: false, message: 'Server error resetting password' });
-  }
-};
 
 module.exports = {
   register,

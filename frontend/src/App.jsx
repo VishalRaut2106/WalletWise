@@ -30,7 +30,7 @@ import VerifyResetOtp from './components/VerifyResetOtp';
 import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
-import ForgotPassword from './components/ForgotPassword';
+
 
 
 function App() {
@@ -123,14 +123,7 @@ function App() {
                 }
               />
 
-              <Route
-                path="/forgot-password"
-                element={
-                  <PublicRoute>
-                    <ForgotPassword />
-                  </PublicRoute>
-                }
-              />
+
 
               {/* Protected Routes - Only accessible when logged in */}
               <Route

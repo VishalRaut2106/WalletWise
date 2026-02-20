@@ -16,8 +16,6 @@ import {
   FaSync, FaExclamationCircle, FaHome, FaExchangeAlt,
   FaCog, FaChartPie, FaEdit, FaTrash, FaCalendarCheck, FaBell,
   FaSun, FaMoon, FaMagic, FaCreditCard, FaFileAlt, FaFilter, FaSearch
-  FaCog, FaChartPie, FaCreditCard, FaFileAlt, FaBell,
-  FaFilter, FaSearch
 } from 'react-icons/fa';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { toast } from 'react-hot-toast';
@@ -172,7 +170,7 @@ const Dashboard = () => {
     setRefreshing(true);
     try {
       console.log('???? Fetching dashboard data...');
-      
+
       const dashboardRes = await api.get('/api/dashboard/summary');
       const dashboardData = dashboardRes.data;
 
