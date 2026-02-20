@@ -12,6 +12,8 @@ const {
 } = require('../utils/tokens');
 const cloudinary = require('../config/cloudinary');
 const getDataUri = require('../utils/dataUri');
+const AppError = require('../utils/appError');
+const catchAsync = require('../utils/catchAsync');
 
 
 const forgotPasswordSchema = z.object({
@@ -174,123 +176,91 @@ const sendPasswordResetInstructions = async (user, { skipEmail } = {}) => {
   return { otp, token, resetLink, delivered: true };
 };
 
-const register = async (req, res) => {
-  try {
-    const parsed = registerSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: parsed.error.errors[0]?.message || 'Invalid input'
-      });
-    }
+const register = catchAsync(async (req, res, next) => {
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return next(new AppError(parsed.error.errors[0]?.message || 'Invalid input', 400));
+  }
 
-    const { studentId, fullName, email, password, phoneNumber, department, year } = parsed.data;
+  const { studentId, fullName, email, password, phoneNumber, department, year } = parsed.data;
 
-    const existing = await User.findOne({ $or: [{ email }, { studentId }] });
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'Registration failed. Please check your details.'
-      });
-    }
+  const existing = await User.findOne({ $or: [{ email }, { studentId }] });
+  if (existing) {
+    return next(new AppError('Registration failed. Please check your details.', 400));
+  }
 
-    const user = new User({
-      studentId,
-      fullName,
-      email,
-      phoneNumber: phoneNumber || '',
-      department,
-      year,
-      provider: 'local',
-      walletBalance: 0,
-      emailVerified: false
-    });
-    await user.setPassword(password);
-await User.saveWithUniqueStudentId(user);
+  const user = new User({
+    studentId,
+    fullName,
+    email,
+    phoneNumber: phoneNumber || '',
+    department,
+    year,
+    provider: 'local',
+    walletBalance: 0,
+    emailVerified: false
+  });
+  await user.setPassword(password);
+  await User.saveWithUniqueStudentId(user);
 
-// ✅ Skip email verification for local testing
-user.emailVerified = true;
-await user.save();
+  // ✅ Skip email verification for local testing
+  user.emailVerified = true;
+  await user.save();
 
-const accessToken = signAccessToken(user);
-const refreshToken = signRefreshToken(user);
-user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-await user.save();
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  await user.save();
 
-setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken);
 
-return res.status(201).json({
-  success: true,
-  message: 'Registration successful',
-  user: safeUser(user)
+  return res.status(201).json({
+    success: true,
+    message: 'Registration successful',
+    user: safeUser(user)
+  });
 });
 
-  } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({
+const login = catchAsync(async (req, res, next) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return next(new AppError(parsed.error.errors[0]?.message || 'Invalid input', 400));
+  }
+
+  const { email, password } = parsed.data;
+  const user = await User.findOne({ email });
+
+  if (!user || !user.passwordHash) {
+    return next(new AppError('Invalid email or password', 401));
+  }
+
+  if (!user.emailVerified) {
+    return res.status(403).json({
       success: false,
-      message: 'Server error during registration'
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Please verify your email before logging in.',
+      email: user.email
     });
   }
-};
 
-const login = async (req, res) => {
-  try {
-    const parsed = loginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: parsed.error.errors[0]?.message || 'Invalid input'
-      });
-    }
-
-    const { email, password } = parsed.data;
-    const user = await User.findOne({ email });
-
-    if (!user || !user.passwordHash) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    if (!user.emailVerified) {
-      return res.status(403).json({
-        success: false,
-        code: 'EMAIL_NOT_VERIFIED',
-        message: 'Please verify your email before logging in.',
-        email: user.email
-      });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-    await User.saveWithUniqueStudentId(user);
-
-    setAuthCookies(res, accessToken, refreshToken);
-
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      user: safeUser(user)
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error during login'
-    });
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    return next(new AppError('Invalid email or password', 401));
   }
-};
+
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  await User.saveWithUniqueStudentId(user);
+
+  setAuthCookies(res, accessToken, refreshToken);
+
+  return res.json({
+    success: true,
+    message: 'Login successful',
+    user: safeUser(user)
+  });
+});
 
 const logout = async (req, res) => {
   try {

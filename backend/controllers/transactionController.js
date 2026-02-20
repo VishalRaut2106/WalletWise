@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Transaction = require('../models/Transactions');
 const User = require('../models/User');
 const { isValidObjectId } = require('../utils/validation');
+const AppError = require('../utils/appError');
+const catchAsync = require('../utils/catchAsync');
 
 // Helper to handle transaction cleanup
 const withTransaction = async (operation) => {
@@ -20,9 +22,8 @@ const withTransaction = async (operation) => {
 };
 
 // Add Transaction
-const addTransaction = async (req, res) => {
-    try {
-        const userId = req.userId;
+const addTransaction = catchAsync(async (req, res, next) => {
+    const userId = req.userId;
         const {
     type,
     amount,
@@ -35,20 +36,22 @@ const addTransaction = async (req, res) => {
     recurringInterval
 } = req.body;
 
-        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!userId) {
+        return next(new AppError('Unauthorized', 401));
+    }
 
-        if (!type || amount === undefined || amount === null || !category) {
-            return res.status(400).json({ success: false, message: 'Type, amount, and category are required' });
-        }
+    if (!type || amount === undefined || amount === null || !category) {
+        return next(new AppError('Type, amount, and category are required', 400));
+    }
 
-        const numericAmount = Number(amount);
-        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-            return res.status(400).json({ success: false, message: 'Amount must be a valid number greater than 0' });
-        }
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        return next(new AppError('Amount must be a valid number greater than 0', 400));
+    }
 
-        if (!['income', 'expense'].includes(type)) {
-            return res.status(400).json({ success: false, message: 'Type must be either income or expense' });
-        }
+    if (!['income', 'expense'].includes(type)) {
+        return next(new AppError('Type must be either income or expense', 400));
+    }
 
         await withTransaction(async (session) => {
             let nextExecutionDate = null;
@@ -104,32 +107,7 @@ const addTransaction = async (req, res) => {
                 }
             });
         });
-
-    } catch (error) {
-        console.error('Add transaction error:', error);
-
-        // Handle "Transaction numbers are only allowed on a replica set" error for local dev
-        if (error.message && error.message.includes('Transaction numbers are only allowed on a replica set')) {
-            return res.status(500).json({
-                success: false,
-                message: 'Database configuration error: Transactions require a Replica Set (Atlas or local-rs).'
-            });
-        }
-
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation error',
-                errors: Object.values(error.errors || {}).map((e) => ({ field: e.path, message: e.message }))
-            });
-        }
-
-        // Avoid double-sending headers if response already sent inside transaction (rare but possible)
-        if (!res.headersSent) {
-            res.status(500).json({ success: false, message: 'Error adding transaction' });
-        }
-    }
-};
+});
 
 // Get all transactions with pagination and filtering
 const getAllTransactions = async (req, res) => {
