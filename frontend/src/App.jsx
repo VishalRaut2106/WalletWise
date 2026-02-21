@@ -20,6 +20,7 @@ import SubscriptionDashboard from './pages/SubscriptionDashboard';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import DecisionHelper from './pages/DecisionHelper';
+import ScrollToTop from './components/ScrollToTop/ScrollToTop';
 
 // Import authentication components
 import Login from './components/Login';
@@ -64,6 +65,7 @@ function App() {
                 },
               }}
             />
+            <ScrollToTop />
 
             <Routes>
               {/* Public Routes */}

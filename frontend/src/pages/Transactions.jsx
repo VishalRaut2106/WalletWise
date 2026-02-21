@@ -140,6 +140,7 @@ const Transactions = () => {
       year: 'numeric'
     });
 
+
   const buildExportRows = () => {
     return transactions.map((tx) => ({
       date: formatDate(tx.date),

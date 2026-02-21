@@ -7,6 +7,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshSession = useCallback(async () => {
+    try {
+      await api.post('/api/auth/refresh', {});
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }, []);
 
   const loadUser = useCallback(async () => {
     setLoading(true);
@@ -53,7 +61,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await api.post('/api/auth/logout');
+    await api.post('/api/auth/logout', {});
     setUser(null);
   };
 

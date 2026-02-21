@@ -89,6 +89,18 @@ const Dashboard = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Scroll Lock for Mobile Menu
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
   // Modal states
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [showAddIncomeModal, setShowAddIncomeModal] = useState(false);
@@ -464,6 +476,14 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="mobile-overlay"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        ></div>
+      )}
       {/* Clean, Focused Navbar */}
       <header className="dashboard-header">
         {/* Left: Logo */}
@@ -479,15 +499,19 @@ const Dashboard = () => {
           <button
             className="mobile-menu-toggle"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-nav-menu"
           >
             <span className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}></span>
             <span className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}></span>
             <span className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}></span>
           </button>
 
-          <ul className={`nav-menu ${isMobileMenuOpen ? 'active' : ''}`}>
+          <ul
+            id="mobile-nav-menu"
+            className={`nav-menu ${isMobileMenuOpen ? 'active' : ''}`}
+          >
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
