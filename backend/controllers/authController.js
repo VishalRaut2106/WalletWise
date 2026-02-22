@@ -206,24 +206,25 @@ const register = async (req, res) => {
       emailVerified: false
     });
     await user.setPassword(password);
-await User.saveWithUniqueStudentId(user);
+    await User.saveWithUniqueStudentId(user);
 
-// ✅ Skip email verification for local testing
-user.emailVerified = true;
-await user.save();
+    // ✅ Skip email verification for local testing
+    user.emailVerified = true;
+    await user.save();
 
-const accessToken = signAccessToken(user);
-const refreshToken = signRefreshToken(user);
-user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-await user.save();
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    await user.save();
 
-setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken);
 
-return res.status(201).json({
-  success: true,
-  message: 'Registration successful',
-  user: safeUser(user)
-});
+    return res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      token: accessToken,
+      user: safeUser(user)
+    });
 
   } catch (error) {
     console.error('Registration error:', error);
@@ -281,6 +282,7 @@ const login = async (req, res) => {
     return res.json({
       success: true,
       message: 'Login successful',
+      token: accessToken,
       user: safeUser(user)
     });
   } catch (error) {
