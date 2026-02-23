@@ -135,8 +135,8 @@ const Dashboard = () => {
   ];
 
   // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    if (refreshing) return; // Prevent multiple simultaneous refreshes
+  const fetchDashboardData = useCallback(async (isForced = false) => {
+    if (refreshing && !isForced) return; // Prevent multiple simultaneous manual refreshes
     setRefreshing(true);
     try {
       console.log('???? Fetching dashboard data...');
@@ -272,8 +272,8 @@ const Dashboard = () => {
 
       if (response.data.success) {
         setShowAddExpenseModal(false);
-        await fetchDashboardData();
-        toast.success('Expenses added succesfullly.', {
+        await fetchDashboardData(true);
+        toast.success('Expenses added successfully.', {
           style: {
             background: '#16a34a',
             color: '#ffffff'
@@ -300,7 +300,7 @@ const Dashboard = () => {
 
       if (response.data.success) {
         setShowAddIncomeModal(false);
-        await fetchDashboardData();
+        await fetchDashboardData(true);
         toast.success('Income Added Successfully.', {
           style: {
             background: '#16a34a',
