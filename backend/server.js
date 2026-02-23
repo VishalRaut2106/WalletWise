@@ -21,7 +21,20 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ==================== SECURITY HEADERS ====================
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://i.pravatar.cc"],
+            connectSrc: ["'self'", "http://localhost:5000", "https://api.walletwise.com"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    },
+}));
 
 // ==================== ENHANCED ERROR LOGGING ====================
 process.on('uncaughtException', (error) => {
