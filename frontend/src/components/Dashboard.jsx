@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { DashboardSkeleton } from './SkeletonLoader';
 import './dashboard.css';
 import AddExpense from '../pages/AddExpense';
 import AddIncome from '../pages/AddIncome';
@@ -135,8 +136,8 @@ const Dashboard = () => {
   ];
 
   // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    if (refreshing) return; // Prevent multiple simultaneous refreshes
+  const fetchDashboardData = useCallback(async (isForced = false) => {
+    if (refreshing && !isForced) return; // Prevent multiple simultaneous manual refreshes
     setRefreshing(true);
     try {
       console.log('???? Fetching dashboard data...');
@@ -272,8 +273,8 @@ const Dashboard = () => {
 
       if (response.data.success) {
         setShowAddExpenseModal(false);
-        await fetchDashboardData();
-        toast.success('Expenses added succesfullly.', {
+        await fetchDashboardData(true);
+        toast.success('Expenses added successfully.', {
           style: {
             background: '#16a34a',
             color: '#ffffff'
@@ -300,7 +301,7 @@ const Dashboard = () => {
 
       if (response.data.success) {
         setShowAddIncomeModal(false);
-        await fetchDashboardData();
+        await fetchDashboardData(true);
         toast.success('Income Added Successfully.', {
           style: {
             background: '#16a34a',
@@ -454,12 +455,7 @@ const Dashboard = () => {
 
   // ============ RENDERING ============
   if (loading) {
-    return (
-      <div className="dashboard-loading">
-        <div className="spinner"></div>
-        <p>Loading your financial dashboard...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
