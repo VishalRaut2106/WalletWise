@@ -157,43 +157,7 @@ const getAllTransactions = async (req, res) => {
         } = req.query;
 
         const query = { userId };
-        // ===== Process recurring transactions =====
-        const recurringTransactions = await Transaction.find({
-            userId,
-            isRecurring: true,
-            nextExecutionDate: { $lte: new Date() }
-        });
-
-        for (const rt of recurringTransactions) {
-            const newTransaction = new Transaction({
-                userId: rt.userId,
-                type: rt.type,
-                amount: rt.amount,
-                category: rt.category,
-                description: rt.description,
-                paymentMethod: rt.paymentMethod,
-                mood: rt.mood,
-                date: new Date()
-            });
-
-            await newTransaction.save();
-
-            // Update next execution date
-            let nextDate = new Date(rt.nextExecutionDate);
-
-            if (rt.recurringInterval === "daily") {
-                nextDate.setDate(nextDate.getDate() + 1);
-            } else if (rt.recurringInterval === "weekly") {
-                nextDate.setDate(nextDate.getDate() + 7);
-            } else if (rt.recurringInterval === "monthly") {
-                nextDate.setMonth(nextDate.getMonth() + 1);
-            }
-
-            rt.nextExecutionDate = nextDate;
-            await rt.save();
-        }
-
-
+        // Recurring transactions are now processed by the dedicated centralized worker (worker.js)
         // Apply filters
         if (type && type !== 'all') {
             query.type = type;
