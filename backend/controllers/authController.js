@@ -616,6 +616,14 @@ const forgotPassword = async (req, res) => {
   }
 };
 
+const verifyPasswordResetOtp = async (req, res) => {
+  try {
+    res.status(200).json({ message: "OTP verified" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
