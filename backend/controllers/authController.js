@@ -1,7 +1,8 @@
-﻿const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const { z } = require('zod');
 const crypto = require('crypto');
 const User = require('../models/User');
+const asyncHandler = require("../middleware/asyncHandler");
 const { sendEmail } = require('../utils/mailer');
 const { generateOtp, hashOtp, otpExpiresAt } = require('../utils/otp');
 const {
@@ -12,7 +13,8 @@ const {
 } = require('../utils/tokens');
 const cloudinary = require('../config/cloudinary');
 const getDataUri = require('../utils/dataUri');
-
+const AppError = require('../utils/appError');
+const catchAsync = require('../utils/catchAsync');
 
 const forgotPasswordSchema = z.object({
   email: z.string().trim().email('Invalid email')
@@ -95,7 +97,6 @@ const safeUser = (user) => ({
   currency: user.currency,
   dateFormat: user.dateFormat,
   language: user.language,
-
   incomeFrequency: user.incomeFrequency,
   incomeSources: user.incomeSources,
   priorities: user.priorities,
@@ -174,280 +175,238 @@ const sendPasswordResetInstructions = async (user, { skipEmail } = {}) => {
   return { otp, token, resetLink, delivered: true };
 };
 
-const register = async (req, res) => {
-  try {
-    const parsed = registerSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: parsed.error.errors[0]?.message || 'Invalid input'
-      });
-    }
+const register = asyncHandler(async (req, res) => {
+  console.log('📝 Incoming Registration Request:', JSON.stringify(req.body, null, 2));
 
-    const { studentId, fullName, email, password, phoneNumber, department, year } = parsed.data;
-
-    const existing = await User.findOne({ $or: [{ email }, { studentId }] });
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'Registration failed. Please check your details.'
-      });
-    }
-
-    const user = new User({
-      studentId,
-      fullName,
-      email,
-      phoneNumber: phoneNumber || '',
-      department,
-      year,
-      provider: 'local',
-      walletBalance: 0,
-      emailVerified: false
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      message: parsed.error.errors[0]?.message || 'Invalid input'
     });
-    await user.setPassword(password);
-await User.saveWithUniqueStudentId(user);
+  }
 
-// ✅ Skip email verification for local testing
-user.emailVerified = true;
-await user.save();
+  const { studentId, fullName, email, password, phoneNumber, department, year } = parsed.data;
 
-const accessToken = signAccessToken(user);
-const refreshToken = signRefreshToken(user);
-user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-await user.save();
+  const existing = await User.findOne({ $or: [{ email }, { studentId }] });
+  if (existing) {
+    return res.status(400).json({
+      success: false,
+      message: 'Registration failed. Please check your details.'
+    });
+  }
 
-setAuthCookies(res, accessToken, refreshToken);
+  const user = new User({
+    studentId,
+    fullName,
+    email,
+    phoneNumber: phoneNumber || '',
+    department,
+    year,
+    provider: 'local',
+    walletBalance: 0,
+    emailVerified: false
+  });
 
-return res.status(201).json({
-  success: true,
-  message: 'Registration successful',
-  user: safeUser(user)
+  await user.setPassword(password);
+  await User.saveWithUniqueStudentId(user);
+
+  // ✅ Skip email verification for local testing
+  user.emailVerified = true;
+  await user.save();
+
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  await user.save();
+
+  setAuthCookies(res, accessToken, refreshToken);
+
+  return res.status(201).json({
+    success: true,
+    message: 'Registration successful',
+    user: safeUser(user)
+  });
 });
 
-  } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({
+const login = asyncHandler(async (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
       success: false,
-      message: 'Server error during registration'
+      message: parsed.error.errors[0]?.message || 'Invalid input'
     });
   }
-};
 
-const login = async (req, res) => {
-  try {
-    const parsed = loginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: parsed.error.errors[0]?.message || 'Invalid input'
-      });
-    }
+  const { email, password } = parsed.data;
+  const user = await User.findOne({ email });
 
-    const { email, password } = parsed.data;
-    const user = await User.findOne({ email });
-
-    if (!user || !user.passwordHash) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    if (!user.emailVerified) {
-      return res.status(403).json({
-        success: false,
-        code: 'EMAIL_NOT_VERIFIED',
-        message: 'Please verify your email before logging in.',
-        email: user.email
-      });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-    await User.saveWithUniqueStudentId(user);
-
-    setAuthCookies(res, accessToken, refreshToken);
-
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      user: safeUser(user)
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({
+  if (!user || !user.passwordHash) {
+    return res.status(401).json({
       success: false,
-      message: 'Server error during login'
+      message: 'Invalid email or password'
     });
   }
-};
 
-const logout = async (req, res) => {
-  try {
-    const refreshToken = req.cookies.refresh_token;
-    if (refreshToken) {
-      try {
-        const decoded = verifyRefreshToken(refreshToken);
-        const user = await User.findById(decoded.sub);
-        if (user) {
-          user.refreshTokenHash = null;
-          await user.save();
-        }
-      } catch (error) {
-        // ignore
+  if (!user.emailVerified) {
+    return res.status(403).json({
+      success: false,
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Please verify your email before logging in.',
+      email: user.email
+    });
+  }
+
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid email or password'
+    });
+  }
+
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  await User.saveWithUniqueStudentId(user);
+
+  setAuthCookies(res, accessToken, refreshToken);
+
+  return res.json({
+    success: true,
+    message: 'Login successful',
+    user: safeUser(user)
+  });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies.refresh_token;
+  if (refreshToken) {
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      const user = await User.findById(decoded.sub);
+      if (user) {
+        user.refreshTokenHash = null;
+        await user.save();
       }
-    }
+    } catch (error) { }
+  }
 
+  clearAuthCookies(res);
+  return res.json({ success: true, message: 'Logged out successfully' });
+});
+
+const refresh = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies.refresh_token;
+  if (!refreshToken) {
+    return res.status(401).json({ success: false, message: 'Refresh token missing' });
+  }
+
+  const decoded = verifyRefreshToken(refreshToken);
+  const user = await User.findById(decoded.sub);
+
+  if (!user || !user.refreshTokenHash) {
     clearAuthCookies(res);
-    return res.json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    console.error('Logout error:', error);
-    return res.status(500).json({ success: false, message: 'Logout failed' });
+    return res.status(401).json({ success: false, message: 'Invalid refresh token' });
   }
-};
 
-const refresh = async (req, res) => {
-  try {
-    const refreshToken = req.cookies.refresh_token;
-    if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'Refresh token missing' });
-    }
-
-    const decoded = verifyRefreshToken(refreshToken);
-    const user = await User.findById(decoded.sub);
-
-    if (!user || !user.refreshTokenHash) {
-      clearAuthCookies(res);
-      return res.status(401).json({ success: false, message: 'Invalid refresh token' });
-    }
-
-    const valid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
-    if (!valid) {
-      clearAuthCookies(res);
-      return res.status(401).json({ success: false, message: 'Refresh token revoked' });
-    }
-
-    const newAccessToken = signAccessToken(user);
-    const newRefreshToken = signRefreshToken(user);
-    user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
-    await user.save();
-
-    setAuthCookies(res, newAccessToken, newRefreshToken);
-
-    return res.json({ success: true, message: 'Session refreshed' });
-  } catch (error) {
-    console.error('Refresh error:', error);
+  const valid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+  if (!valid) {
     clearAuthCookies(res);
-    return res.status(401).json({ success: false, message: 'Refresh failed' });
+    return res.status(401).json({ success: false, message: 'Refresh token revoked' });
   }
-};
 
-const me = async (req, res) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+  const newAccessToken = signAccessToken(user);
+  const newRefreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+  await user.save();
 
-    return res.json({ success: true, user: safeUser(user) });
-  } catch (error) {
-    console.error('Me error:', error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+  setAuthCookies(res, newAccessToken, newRefreshToken);
+
+  return res.json({ success: true, message: 'Session refreshed' });
+});
+
+const me = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.userId);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
   }
-};
 
-const verifyEmail = async (req, res) => {
-  try {
-    const { email, otp } = req.body || {};
-    if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and OTP are required'
-      });
-    }
+  return res.json({ success: true, user: safeUser(user) });
+});
 
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    if (user.emailVerified) {
-      return res.json({ success: true, message: 'Email already verified', user: safeUser(user) });
-    }
-
-    if (!user.emailOtpHash || !user.emailOtpExpires) {
-      return res.status(400).json({ success: false, message: 'No OTP requested' });
-    }
-
-    if (user.emailOtpExpires < new Date()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-
-    const matches = user.emailOtpHash === hashOtp(String(otp).trim());
-    if (!matches) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    user.emailVerified = true;
-    user.emailOtpHash = null;
-    user.emailOtpExpires = null;
-    await user.save();
-
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-    await user.save();
-
-    setAuthCookies(res, accessToken, refreshToken);
-
-    return res.json({
-      success: true,
-      message: 'Email verified successfully',
-      user: safeUser(user)
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body || {};
+  if (!email || !otp) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email and OTP are required'
     });
-  } catch (error) {
-    console.error('Verify email error:', error);
-    return res.status(500).json({ success: false, message: 'Server error verifying email' });
   }
-};
 
-const resendEmailOtp = async (req, res) => {
-  try {
-    const { email } = req.body || {};
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required' });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    if (user.emailVerified) {
-      return res.json({ success: true, message: 'Email already verified' });
-    }
-
-    await sendVerificationOtp(user);
-
-    return res.json({
-      success: true,
-      message: 'OTP resent successfully'
-    });
-  } catch (error) {
-    console.error('Resend OTP error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to resend OTP' });
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
   }
-};
+
+  if (user.emailVerified) {
+    return res.json({ success: true, message: 'Email already verified', user: safeUser(user) });
+  }
+
+  if (!user.emailOtpHash || !user.emailOtpExpires) {
+    return res.status(400).json({ success: false, message: 'No OTP requested' });
+  }
+
+  if (user.emailOtpExpires < new Date()) {
+    return res.status(400).json({ success: false, message: 'OTP expired' });
+  }
+
+  const matches = user.emailOtpHash === hashOtp(String(otp).trim());
+  if (!matches) {
+    return res.status(400).json({ success: false, message: 'Invalid OTP' });
+  }
+
+  user.emailVerified = true;
+  user.emailOtpHash = null;
+  user.emailOtpExpires = null;
+  await user.save();
+
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  await user.save();
+
+  setAuthCookies(res, accessToken, refreshToken);
+
+  return res.json({
+    success: true,
+    message: 'Email verified successfully',
+    user: safeUser(user)
+  });
+});
+
+const resendEmailOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email is required' });
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  if (user.emailVerified) {
+    return res.json({ success: true, message: 'Email already verified' });
+  }
+
+  await sendVerificationOtp(user);
+
+  return res.json({
+    success: true,
+    message: 'OTP resent successfully'
+  });
+});
 
 const requestPasswordReset = async (req, res) => {
   try {
@@ -470,8 +429,6 @@ const requestPasswordReset = async (req, res) => {
         if (process.env.NODE_ENV !== 'production' && /SMTP configuration missing/i.test(mailError?.message)) {
           const fallback = await sendPasswordResetInstructions(user, { skipEmail: true });
           devResetLink = fallback.resetLink;
-          console.warn('SMTP not configured. Password reset link (dev only):', fallback.resetLink);
-          console.warn('SMTP not configured. Password reset OTP (dev only):', fallback.otp);
         } else {
           throw mailError;
         }
@@ -485,41 +442,10 @@ const requestPasswordReset = async (req, res) => {
       ...(devResetLink ? { devResetLink } : {})
     });
   } catch (error) {
-    console.error('Request password reset error:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to send password reset link'
     });
-  }
-};
-
-const verifyPasswordResetOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body || {};
-    const normalizedEmail = String(email || '').toLowerCase();
-
-    if (!normalizedEmail || !otp) {
-      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
-    }
-
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpires) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
-    }
-
-    if (user.passwordResetOtpExpires < new Date()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-
-    const matches = user.passwordResetOtpHash === hashOtp(String(otp).trim());
-    if (!matches) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    return res.json({ success: true, message: 'OTP verified' });
-  } catch (error) {
-    console.error('Verify password reset OTP error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
   }
 };
 
@@ -581,92 +507,78 @@ const resetPassword = async (req, res) => {
 
     return res.json({ success: true, message: 'Password reset successful' });
   } catch (error) {
-    console.error('Reset password error:', error);
     return res.status(500).json({ success: false, message: 'Failed to reset password' });
   }
 };
 
-const updateProfile = async (req, res) => {
-  try {
-    const parsed = updateProfileSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        success: false,
-        message: parsed.error.errors[0]?.message || 'Invalid input'
-      });
-    }
-
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    if (req.file) {
-      const fileUri = getDataUri(req.file);
-      const myCloud = await cloudinary.uploader.upload(fileUri.content);
-      user.avatar = myCloud.secure_url;
-    }
-
-    const {
-      fullName, phoneNumber, department, year,
-      currency, dateFormat, language,
-      incomeFrequency, incomeSources, priorities, riskTolerance
-    } = parsed.data;
-
-    if (fullName !== undefined) user.fullName = fullName.trim();
-    if (phoneNumber !== undefined) user.phoneNumber = phoneNumber.trim();
-    if (department !== undefined) user.department = department.trim();
-    if (year !== undefined) user.year = year;
-
-    // Profile Settings
-    if (currency !== undefined) user.currency = currency;
-    if (dateFormat !== undefined) user.dateFormat = dateFormat;
-    if (language !== undefined) user.language = language;
-
-    // Financial Settings
-    if (incomeFrequency !== undefined) user.incomeFrequency = incomeFrequency;
-    if (incomeSources !== undefined) user.incomeSources = incomeSources;
-    if (priorities !== undefined) user.priorities = priorities;
-    if (riskTolerance !== undefined) user.riskTolerance = riskTolerance;
-
-    await user.save();
-
-    return res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      user: safeUser(user)
+const updateProfile = asyncHandler(async (req, res) => {
+  const parsed = updateProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      message: parsed.error.errors[0]?.message || 'Invalid input'
     });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    return res.status(500).json({ success: false, message: 'Server error updating profile' });
   }
-};
 
-const googleCallback = async (req, res) => {
-  try {
-    const user = req.user;
-    if (!user.emailVerified) {
-      user.emailVerified = true;
-      user.emailOtpHash = null;
-      user.emailOtpExpires = null;
-      user.emailOtpSentAt = null;
-      await User.saveWithUniqueStudentId(user);
-    }
+  const user = await User.findById(req.userId);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
 
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  if (req.file) {
+    const fileUri = getDataUri(req.file);
+    const myCloud = await cloudinary.uploader.upload(fileUri.content);
+    user.avatar = myCloud.secure_url;
+  }
+
+  const {
+    fullName, phoneNumber, department, year,
+    currency, dateFormat, language,
+    incomeFrequency, incomeSources, priorities, riskTolerance
+  } = parsed.data;
+
+  if (fullName !== undefined) user.fullName = fullName.trim();
+  if (phoneNumber !== undefined) user.phoneNumber = phoneNumber.trim();
+  if (department !== undefined) user.department = department.trim();
+  if (year !== undefined) user.year = year;
+
+  if (currency !== undefined) user.currency = currency;
+  if (dateFormat !== undefined) user.dateFormat = dateFormat;
+  if (language !== undefined) user.language = language;
+  if (incomeFrequency !== undefined) user.incomeFrequency = incomeFrequency;
+  if (incomeSources !== undefined) user.incomeSources = incomeSources;
+  if (priorities !== undefined) user.priorities = priorities;
+  if (riskTolerance !== undefined) user.riskTolerance = riskTolerance;
+
+  await user.save();
+
+  return res.json({
+    success: true,
+    message: 'Profile updated successfully',
+    user: safeUser(user)
+  });
+});
+
+const googleCallback = asyncHandler(async (req, res) => {
+  const user = req.user;
+  if (!user.emailVerified) {
+    user.emailVerified = true;
+    user.emailOtpHash = null;
+    user.emailOtpExpires = null;
+    user.emailOtpSentAt = null;
     await User.saveWithUniqueStudentId(user);
-
-    setAuthCookies(res, accessToken, refreshToken);
-
-    const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`;
-    return res.redirect(redirectUrl);
-  } catch (error) {
-    console.error('Google callback error:', error);
-    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=google`);
   }
-};
+
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  await User.saveWithUniqueStudentId(user);
+
+  setAuthCookies(res, accessToken, refreshToken);
+
+  const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`;
+  return res.redirect(redirectUrl);
+});
 
 const forgotPassword = async (req, res) => {
   try {
@@ -687,44 +599,22 @@ const forgotPassword = async (req, res) => {
 
     const otp = generateOtp();
     user.passwordResetOtpHash = hashOtp(otp);
-    user.passwordResetOtpExpires = otpExpiresAt(10); // 10 minutes
+    user.passwordResetOtpExpires = otpExpiresAt(10);
     user.passwordResetOtpSentAt = new Date();
     await user.save();
 
     const subject = 'Reset your WalletWise password 🔐';
-    const text = `Hello ${user.fullName || 'User'},
-
-Your OTP to reset your password is:
-
-👉 ${otp}
-
-This OTP is valid for 10 minutes.
-Please do not share it with anyone.
-
-— Team WalletWise`;
-
-    const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-      <h2>Reset your Password</h2>
-      <p>Hello ${user.fullName || 'User'},</p>
-      <p>Your OTP to reset your password is:</p>
-      <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</p>
-      <p>This OTP is valid for 10 minutes.</p>
-      <p>If you didn't request this, please ignore this email.</p>
-      <p>— Team WalletWise</p>
-    </div>
-  `;
+    const text = `Your OTP is ${otp}`;
+    const html = `<p>Your OTP is <b>${otp}</b></p>`;
 
     await sendEmail({ to: user.email, subject, text, html });
 
     return res.json({ success: true, message: 'OTP sent to your email', next: 'verify_otp' });
 
   } catch (error) {
-    console.error('Forgot password error:', error);
     return res.status(500).json({ success: false, message: 'Server error with forgot password' });
   }
 };
-
 
 module.exports = {
   register,
@@ -736,6 +626,8 @@ module.exports = {
   googleCallback,
   verifyEmail,
   resendEmailOtp,
+  requestPasswordReset,
+  verifyPasswordResetOtp,
   forgotPassword,
   resetPassword
 };

@@ -4,26 +4,27 @@ const User = require('../models/User');
 const { z } = require('zod');
 const { isValidObjectId } = require('../utils/validation');
 
+
 const transactionSchema = z.object({
-  type: z.enum(['income', 'expense'], {
-    errorMap: () => ({ message: "Type must be either 'income' or 'expense'" })
-  }),
-  amount: z.preprocess(
-    (val) => (typeof val === 'string' ? Number(val) : val),
-    z.number({ invalid_type_error: "Amount must be a number" })
-     .finite()
-     .positive("Amount must be greater than 0")
-  ),
-  category: z.string().trim().min(1, "Category is required").toLowerCase(),
-  description: z.string().trim().optional().default(''),
-  paymentMethod: z.string().trim().optional().default('cash'),
-  mood: z.string().trim().optional().default('neutral'),
-  date: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined ? undefined : new Date(val)),
-    z.date().optional()
-  ),
-  isRecurring: z.boolean().optional().default(false),
-  recurringInterval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional()
+    type: z.enum(['income', 'expense'], {
+        errorMap: () => ({ message: "Type must be either 'income' or 'expense'" })
+    }),
+    amount: z.preprocess(
+        (val) => (typeof val === 'string' ? Number(val) : val),
+        z.number({ invalid_type_error: "Amount must be a number" })
+            .finite()
+            .positive("Amount must be greater than 0")
+    ),
+    category: z.string().trim().min(1, "Category is required").toLowerCase(),
+    description: z.string().trim().optional().default(''),
+    paymentMethod: z.string().trim().optional().default('cash'),
+    mood: z.string().trim().optional().default('neutral'),
+    date: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined ? undefined : new Date(val)),
+        z.date().optional()
+    ),
+    isRecurring: z.boolean().optional().default(false),
+    recurringInterval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional()
 });
 
 // Helper to handle transaction cleanup
@@ -46,9 +47,13 @@ const withTransaction = async (operation) => {
 const addTransaction = async (req, res) => {
     try {
         const userId = req.userId;
-        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
 
         const parsed = transactionSchema.safeParse(req.body);
+
         if (!parsed.success) {
             return res.status(400).json({
                 success: false,
@@ -68,72 +73,83 @@ const addTransaction = async (req, res) => {
             recurringInterval
         } = parsed.data;
 
-        let nextExecutionDate = null;
+        // Duplicate Detection
+        const duplicateWindow = 24 * 60 * 60 * 1000;
+        const sinceDate = new Date(Date.now() - duplicateWindow);
 
-if (isRecurring && recurringInterval) {
-    const now = new Date();
+        const possibleDuplicate = await Transaction.findOne({
+            userId,
+            type,
+            amount,
+            category,
+            date: { $gte: sinceDate }
+        });
 
-    if (recurringInterval === "daily") now.setDate(now.getDate() + 1);
-    else if (recurringInterval === "weekly") now.setDate(now.getDate() + 7);
-    else if (recurringInterval === "monthly") now.setMonth(now.getMonth() + 1);
+        if (possibleDuplicate) {
+            return res.status(409).json({
+                success: false,
+                duplicate: true,
+                message: "A similar transaction was recently added."
+            });
+        }
 
-    nextExecutionDate = now;
-}
+        await withTransaction(async (session) => {
 
-const transaction = new Transaction({
-    userId,
-    type,
-    amount,
-    category,
-    description,
-    paymentMethod,
-    mood,
-    ...(date ? { date } : {}),
-    isRecurring,
-    recurringInterval,
-    nextExecutionDate
-});
+            let nextExecutionDate = null;
 
-await transaction.save();
+            if (isRecurring && recurringInterval) {
+                const now = new Date();
 
-const balanceChange = type === 'income' ? amount : -amount;
+                if (recurringInterval === "daily") now.setDate(now.getDate() + 1);
+                else if (recurringInterval === "weekly") now.setDate(now.getDate() + 7);
+                else if (recurringInterval === "monthly") now.setMonth(now.getMonth() + 1);
 
-await User.findByIdAndUpdate(userId, {
-    $inc: { walletBalance: balanceChange }
-});
+                nextExecutionDate = now;
+            }
 
-return res.status(201).json({
-    success: true,
-    message: 'Transaction added successfully',
-    transaction
-});
+            const transaction = new Transaction({
+                userId,
+                type,
+                amount,
+                category,
+                description,
+                paymentMethod,
+                mood,
+                ...(date ? { date } : {}),
+                isRecurring,
+                recurringInterval,
+                nextExecutionDate
+            });
+
+            await transaction.save({ session });
+
+            const balanceChange = type === 'income' ? amount : -amount;
+
+            await User.findByIdAndUpdate(
+                userId,
+                { $inc: { walletBalance: balanceChange } },
+                { session }
+            );
+
+            return res.status(201).json({
+                success: true,
+                message: 'Transaction added successfully',
+                transaction
+            });
+
+        });
 
     } catch (error) {
         console.error('Add transaction error:', error);
 
-        // Handle "Transaction numbers are only allowed on a replica set" error for local dev
-        if (error.message && error.message.includes('Transaction numbers are only allowed on a replica set')) {
-            return res.status(500).json({
-                success: false,
-                message: 'Database configuration error: Transactions require a Replica Set (Atlas or local-rs).'
-            });
-        }
-
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation error',
-                errors: Object.values(error.errors || {}).map((e) => ({ field: e.path, message: e.message }))
-            });
-        }
-
-        // Avoid double-sending headers if response already sent inside transaction (rare but possible)
         if (!res.headersSent) {
-            res.status(500).json({ success: false, message: 'Error adding transaction' });
+            res.status(500).json({
+                success: false,
+                message: 'Error adding transaction'
+            });
         }
     }
 };
-
 // Get all transactions with pagination and filtering
 const getAllTransactions = async (req, res) => {
     try {
@@ -150,40 +166,40 @@ const getAllTransactions = async (req, res) => {
 
         const query = { userId };
         // ===== Process recurring transactions =====
-const recurringTransactions = await Transaction.find({
-    userId,
-    isRecurring: true,
-    nextExecutionDate: { $lte: new Date() }
-});
+        const recurringTransactions = await Transaction.find({
+            userId,
+            isRecurring: true,
+            nextExecutionDate: { $lte: new Date() }
+        });
 
-for (const rt of recurringTransactions) {
-    const newTransaction = new Transaction({
-        userId: rt.userId,
-        type: rt.type,
-        amount: rt.amount,
-        category: rt.category,
-        description: rt.description,
-        paymentMethod: rt.paymentMethod,
-        mood: rt.mood,
-        date: new Date()
-    });
+        for (const rt of recurringTransactions) {
+            const newTransaction = new Transaction({
+                userId: rt.userId,
+                type: rt.type,
+                amount: rt.amount,
+                category: rt.category,
+                description: rt.description,
+                paymentMethod: rt.paymentMethod,
+                mood: rt.mood,
+                date: new Date()
+            });
 
-    await newTransaction.save();
+            await newTransaction.save();
 
-    // Update next execution date
-    let nextDate = new Date(rt.nextExecutionDate);
+            // Update next execution date
+            let nextDate = new Date(rt.nextExecutionDate);
 
-    if (rt.recurringInterval === "daily") {
-        nextDate.setDate(nextDate.getDate() + 1);
-    } else if (rt.recurringInterval === "weekly") {
-        nextDate.setDate(nextDate.getDate() + 7);
-    } else if (rt.recurringInterval === "monthly") {
-        nextDate.setMonth(nextDate.getMonth() + 1);
-    }
+            if (rt.recurringInterval === "daily") {
+                nextDate.setDate(nextDate.getDate() + 1);
+            } else if (rt.recurringInterval === "weekly") {
+                nextDate.setDate(nextDate.getDate() + 7);
+            } else if (rt.recurringInterval === "monthly") {
+                nextDate.setMonth(nextDate.getMonth() + 1);
+            }
 
-    rt.nextExecutionDate = nextDate;
-    await rt.save();
-}
+            rt.nextExecutionDate = nextDate;
+            await rt.save();
+        }
 
 
         // Apply filters

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../api/client';
 import './SetBudget.css';
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const DEFAULT_CATEGORIES = [
   { name: 'Food', categoryType: 'food', amount: 0, percentage: 0, color: '#FF6B6B' },
@@ -15,6 +16,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
+  const [showConfirm, setShowConfirm] = useState(false);
   const [formData, setFormData] = useState({
     totalBudget: '',
     categories: DEFAULT_CATEGORIES
@@ -232,7 +234,7 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
 
   const handleOverlayClick = (e) => {
     if (e.target.classList.contains('budget-modal-overlay')) {
-      onClose();
+      handleClose();
     }
   };
 
@@ -246,8 +248,7 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
   };
 
   const handleClose = () => {
-    resetForm();
-    onClose();
+    setShowConfirm(true);
   };
 
   if (!isOpen) return null;
@@ -462,6 +463,16 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
           </div>
         </form>
       </div>
+      <ConfirmDialog
+        isOpen={showConfirm}
+        message="Are you sure you want to close? Any unsaved budget changes will be lost."
+        onConfirm={() => {
+          setShowConfirm(false);
+          resetForm();
+          onClose();
+        }}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 };

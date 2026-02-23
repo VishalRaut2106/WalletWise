@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const dotenv = require("dotenv");
+const AppError = require("./utils/appError");
+const globalErrorHandler = require("./middleware/errorMiddleware");
 const passport = require("passport");
 const helmet = require("helmet");
 const { configurePassport } = require("./config/passport");
@@ -137,10 +139,14 @@ const budgetRoutes = require('./routes/budgetRoutes');
 const savingGoalRoutes = require('./routes/savingGoalRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const errHandler = require('./middleware/errorHandler');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const insightsRoutes = require('./routes/insightsRoutes');
 
 // ==================== ROUTE MOUNTING ====================
+app.get('/test-error', asyncHandler(async (req,res)=>{
+  throw new Error("Working!");
+}));
 app.use('/api/auth', authRoutes);
 app.use('/auth', oauthRoutes);
 app.use('/api/budget', budgetRoutes);
@@ -241,15 +247,17 @@ app.get('/', (req, res) => {
     });
 });
 
+// ==================== ERROR HANDLING ====================
+
 // 404 handler
-app.use('*', (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: 'Endpoint not found',
-        requestedUrl: req.originalUrl,
-        timestamp: new Date().toISOString()
-    });
+app.all('*', (req, res, next) => {
+    next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+
+// Global Error Middleware
+app.use(globalErrorHandler);
+app.use(errHandler);
+
 
 // ==================== START SERVER ====================
 // Initialize Scheduler
