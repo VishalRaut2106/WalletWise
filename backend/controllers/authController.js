@@ -179,6 +179,7 @@ const sendPasswordResetInstructions = async (user, { skipEmail } = {}) => {
   return { otp, token, resetLink, delivered: true };
 };
 
+
 const register = asyncHandler(async (req, res) => {
   console.log('📝 Incoming Registration Request:', JSON.stringify(req.body, null, 2));
 
@@ -210,6 +211,7 @@ const register = asyncHandler(async (req, res) => {
   });
 
   await user.setPassword(password);
+
   await User.saveWithUniqueStudentId(user);
 
   // Skip email verification for local testing
@@ -218,6 +220,9 @@ const register = asyncHandler(async (req, res) => {
 
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
+
+
+
 
   user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
   await user.save();
@@ -282,6 +287,7 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+
 const logout = asyncHandler(async (req, res) => {
   clearAuthCookies(res);
   return res.json({
@@ -289,6 +295,7 @@ const logout = asyncHandler(async (req, res) => {
     message: 'Logged out successfully'
   });
 });
+
 const refresh = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies.refresh_token;
   if (!refreshToken) {
@@ -528,10 +535,11 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
 
   const {
-    fullName, phoneNumber, department, year,
-    currency, dateFormat, language, theme,
-    incomeFrequency, incomeSources, priorities, riskTolerance
-  } = parsed.data;
+  fullName, phoneNumber, department, year,
+  currency, dateFormat, language, theme,
+  incomeFrequency, incomeSources, priorities, riskTolerance,
+  billRemindersEnabled, reminderDaysBefore
+} = parsed.data;
 
   if (fullName !== undefined) user.fullName = fullName.trim();
   if (phoneNumber !== undefined) user.phoneNumber = phoneNumber.trim();
