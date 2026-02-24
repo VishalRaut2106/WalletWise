@@ -26,11 +26,12 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            scriptSrc: ["'self'", "https://unpkg.com"],
+            styleSrc: ["'self'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://i.pravatar.cc"],
-            connectSrc: ["'self'", "http://localhost:5000", "https://api.walletwise.com"],
+            imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://i.pravatar.cc", "https://www.google.com"],
+            connectSrc: ["'self'", "http://localhost:5000", "https://api.walletwise.com", "https://tessdata.projectnaptha.com", "https://unpkg.com"],
+            workerSrc: ["'self'", "blob:"],
             objectSrc: ["'none'"],
             upgradeInsecureRequests: [],
         },
