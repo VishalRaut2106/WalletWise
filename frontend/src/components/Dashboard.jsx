@@ -68,6 +68,7 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const { isDark, toggleTheme } = useTheme();
 
@@ -226,6 +227,7 @@ const Dashboard = () => {
 
 
 
+        // Setup initial user
         setUser(authUser);
 
         // Set time greeting
@@ -234,12 +236,10 @@ const Dashboard = () => {
         else if (hour < 17) setTimeOfDay('Afternoon');
         else setTimeOfDay('Evening');
 
-        // Set current date - standardized format
+        // Set current date
         const now = new Date();
         const options = { month: 'long', day: 'numeric', year: 'numeric' };
         setCurrentDate(now.toLocaleDateString('en-US', options));
-
-        await fetchDashboardData();
 
       } catch (err) {
         console.error('Dashboard initialization error:', err);
@@ -251,7 +251,18 @@ const Dashboard = () => {
     };
 
     fetchUserData();
-  }, [navigate, authUser, authLoading, fetchDashboardData]);
+  }, [navigate, authUser, authLoading]);
+
+  // Initial fetch and manual refreshes decoupled
+  useEffect(() => {
+    if (!authLoading && authUser) {
+      fetchDashboardData(refreshTrigger > 0);
+    }
+  }, [authLoading, authUser, refreshTrigger]);
+
+  const triggerRefresh = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   // ============ HANDLERS ============
   const handleLogout = async () => {
@@ -275,80 +286,33 @@ const Dashboard = () => {
     return false;
   };
 
-  const handleAddExpense = async (expenseData) => {
-    try {
-      console.log("??? Adding expense:", expenseData);
+  const handleAddExpenseClick = () => setShowAddExpenseModal(true);
+  const handleAddIncomeClick = () => setShowAddIncomeModal(true);
+  const handleSetBudgetClick = () => setShowSetBudgetModal(true);
+  const handleSavingsGoalClick = () => setShowSavingsGoalModal(true);
 
-      const response = await api.post("/api/transactions", expenseData);
+  const handleSuccess = (type) => {
+    if (type === 'expense') setShowAddExpenseModal(false);
+    if (type === 'income') setShowAddIncomeModal(false);
+    if (type === 'budget') setShowSetBudgetModal(false);
+    if (type === 'goal') setShowSavingsGoalModal(false);
 
-      console.log("✅ Expense response:", response.data);
+    triggerRefresh();
 
-      if (response.data.success) {
-        setShowAddExpenseModal(false);
-        await fetchDashboardData(true);
-        toast.success('Expenses added successfully.', {
-          style: {
-            background: "#16a34a",
-            color: "#ffffff",
-          },
-          iconTheme: {
-            primary: "#bbf7d0",
-            secondary: "#166534",
-          },
-        });
-      }
-    } catch (err) {
-      console.error("❌ Failed to add expense:", err);
-      alert("Failed to add expense. Please try again.");
+    // Determine notification message
+    const messages = {
+      expense: 'Expenses added successfully.',
+      income: 'Income added successfully.',
+      budget: 'Budget set successfully.',
+      goal: 'Goal created successfully.'
+    };
+
+    if (messages[type]) {
+      toast.success(messages[type], {
+        style: { background: "#16a34a", color: "#ffffff" },
+        iconTheme: { primary: "#bbf7d0", secondary: "#166534" }
+      });
     }
-  };
-
-  const handleAddIncome = async (incomeData) => {
-    try {
-      console.log("??? Adding income:", incomeData);
-
-      const response = await api.post("/api/transactions", incomeData);
-
-      console.log("✅ Income response:", response.data);
-
-      if (response.data.success) {
-        setShowAddIncomeModal(false);
-        await fetchDashboardData(true);
-        toast.success('Income Added Successfully.', {
-          style: {
-            background: "#16a34a",
-            color: "#ffffff",
-          },
-          iconTheme: {
-            primary: "#bbf7d0",
-            secondary: "#166534",
-          },
-        });
-      }
-    } catch (err) {
-      console.error("❌ Failed to add income:", err);
-      alert("Failed to add income. Please try again.");
-    }
-  };
-
-  const handleSetBudget = async () => {
-    setShowSetBudgetModal(false);
-    await fetchDashboardData();
-  };
-
-  const handleCreateSavingsGoal = async () => {
-    setShowSavingsGoalModal(false);
-    await fetchDashboardData();
-    toast.success("Goals Created.", {
-      style: {
-        background: "#16a34a",
-        color: "#ffffff",
-      },
-      iconTheme: {
-        primary: "#bbf7d0",
-        secondary: "#166534",
-      },
-    });
   };
 
   const handleAIInsights = () => {
@@ -1059,25 +1023,25 @@ const Dashboard = () => {
       <AddExpense
         isOpen={showAddExpenseModal}
         onClose={() => setShowAddExpenseModal(false)}
-        onAddExpense={handleAddExpense}
+        onSuccess={() => handleSuccess('expense')}
       />
 
       <AddIncome
         isOpen={showAddIncomeModal}
         onClose={() => setShowAddIncomeModal(false)}
-        onAddIncome={handleAddIncome}
+        onSuccess={() => handleSuccess('income')}
       />
 
       <SetBudget
         isOpen={showSetBudgetModal}
         onClose={() => setShowSetBudgetModal(false)}
-        onSetBudget={handleSetBudget}
+        onSetBudget={() => handleSuccess('budget')}
       />
 
       <SavingGoal
         isOpen={showSavingsGoalModal}
         onClose={() => setShowSavingsGoalModal(false)}
-        onGoalCreated={handleCreateSavingsGoal}
+        onGoalCreated={() => handleSuccess('goal')}
       />
     </div>
   );

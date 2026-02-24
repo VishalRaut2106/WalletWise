@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import { Scan, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/client';
 import './AddExpense.css';
 
 // 1. Added 'transactionToEdit' to props
-const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
+const AddExpense = ({ isOpen, onClose, onSuccess, transactionToEdit }) => {
   const [formData, setFormData] = useState({
     amount: '',
     category: 'food',
@@ -17,6 +18,7 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
   const { user } = useAuth();
@@ -73,7 +75,7 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
     { value: 'online', label: 'Online Banking' }
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
@@ -98,18 +100,30 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
       }
     }
 
-    onAddExpense(transactionData);
-    onClose();
+    setLoading(true);
+    try {
+      const response = await api.post("/api/transactions", transactionData);
 
-    if (!transactionToEdit) {
-      setFormData({
-        amount: '',
-        category: 'food',
-        date: new Date().toISOString().split('T')[0],
-        paymentMethod: 'cash',
-        description: '',
-        mood: 'neutral'
-      });
+      if (response.data.success) {
+        if (onSuccess) onSuccess();
+        onClose();
+
+        if (!transactionToEdit) {
+          setFormData({
+            amount: '',
+            category: 'food',
+            date: new Date().toISOString().split('T')[0],
+            paymentMethod: 'cash',
+            description: '',
+            mood: 'neutral'
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to add expense:", err);
+      alert("Failed to add expense. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -317,7 +331,7 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
                 />
               </>
             )}
-            <button className="close-expense-btn" onClick={onClose}>Close</button>
+            <button className="close-expense-btn" onClick={onClose} disabled={loading}>Close</button>
           </div>
         </div>
 
@@ -336,6 +350,7 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
                 placeholder="0.00"
                 required
                 autoFocus
+                disabled={loading}
               />
             </div>
           </div>
@@ -350,6 +365,7 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
                   type="button"
                   className={`selection-btn ${formData.mood === m.value ? 'active' : ''}`}
                   onClick={() => setFormData(prev => ({ ...prev, mood: m.value }))}
+                  disabled={loading}
                 >
                   {m.label}
                 </button>
@@ -367,6 +383,7 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
                   type="button"
                   className={`selection-btn ${formData.category === cat.value ? 'active' : ''}`}
                   onClick={() => setFormData(prev => ({ ...prev, category: cat.value }))}
+                  disabled={loading}
                 >
                   {cat.label}
                 </button>
@@ -377,11 +394,11 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
           <div className="form-row-flex">
             <div className="expense-form-group flex-1">
               <label htmlFor="date">Date</label>
-              <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} />
+              <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} disabled={loading} />
             </div>
             <div className="expense-form-group flex-1">
               <label htmlFor="paymentMethod">Payment Method</label>
-              <select id="paymentMethod" name="paymentMethod" value={formData.paymentMethod} onChange={handleChange}>
+              <select id="paymentMethod" name="paymentMethod" value={formData.paymentMethod} onChange={handleChange} disabled={loading}>
                 {paymentMethods.map(pm => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
               </select>
             </div>
@@ -393,10 +410,10 @@ const AddExpense = ({ isOpen, onClose, onAddExpense, transactionToEdit }) => {
           </div>
 
           <div className="expense-form-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>
             {/* 5. Update Button Text dynamically */}
-            <button type="submit" className="btn-primary">
-              {transactionToEdit ? 'Update Expense' : 'Save Expense'}
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? "Saving..." : (transactionToEdit ? 'Update Expense' : 'Save Expense')}
             </button>
           </div>
         </form>

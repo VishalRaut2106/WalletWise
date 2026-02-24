@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './AddExpense.css'; // Reusing the clean CSS
 
-const AddIncome = ({ isOpen, onClose, onAddIncome }) => {
+import api from '../api/client';
+
+const AddIncome = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     amount: '',
     category: 'pocket_money',
@@ -51,16 +53,20 @@ const AddIncome = ({ isOpen, onClose, onAddIncome }) => {
 
     setLoading(true);
     try {
-      await onAddIncome(transactionData);
-      onClose();
+      const response = await api.post("/api/transactions", transactionData);
 
-      setFormData({
-        amount: '',
-        category: 'pocket_money',
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-        sourceNature: 'earned'
-      });
+      if (response.data.success) {
+        if (onSuccess) onSuccess();
+        onClose();
+
+        setFormData({
+          amount: '',
+          category: 'pocket_money',
+          date: new Date().toISOString().split('T')[0],
+          description: '',
+          sourceNature: 'earned'
+        });
+      }
     } catch (err) {
       console.error('Error adding income:', err);
     } finally {
