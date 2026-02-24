@@ -12,6 +12,7 @@ const authRoutes = require("./routes/authRoutes");
 const oauthRoutes = require("./routes/oauthRoutes");
 const { protect } = require("./middleware/auth");
 const analyticsRoutes = require("./routes/analyticsRoutes");
+const asyncHandler = require("./middleware/asyncHandler");
 dotenv.config();
 
 // Initialize Express app
