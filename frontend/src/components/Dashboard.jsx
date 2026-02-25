@@ -140,6 +140,7 @@ const Dashboard = () => {
     },
     { id: "budget", label: "Budget", icon: FaChartPie, path: "/budget" },
     { id: "goals", label: "Goals", icon: FaBullseye, path: "/goals" },
+    { id: "wallets", label: "Shared Wallets", icon: FaWallet, path: "/wallets" },
     { id: "reports", label: "Reports", icon: FaChartBar, path: "/reports" },
     { id: "subscriptions", label: "Subscriptions", icon: FaCog, path: "/subscriptions" },
     { id: "settings", label: "Settings", icon: FaCog, path: "/settings" },
@@ -605,7 +606,7 @@ const Dashboard = () => {
 
               <div className="dropdown-divider"></div>
 
-             <Link
+              <Link
                 to="/profile"
                 className="dropdown-item"
                 role="menuitem"
@@ -631,11 +632,11 @@ const Dashboard = () => {
               <div className="dropdown-divider"></div>
 
               <button
-                  onClick={handleLogout}
-                  className="dropdown-item logout"
-                  role="menuitem"
-                  title="Logout"
-                >
+                onClick={handleLogout}
+                className="dropdown-item logout"
+                role="menuitem"
+                title="Logout"
+              >
                 <FaSignOutAlt />
                 <span>Logout</span>
               </button>
@@ -898,7 +899,7 @@ const Dashboard = () => {
             </div>
             <div className="chart-wrapper">
               {weeklyExpenses.length > 0 &&
-              weeklyExpenses.some((exp) => exp.amount > 0) ? (
+                weeklyExpenses.some((exp) => exp.amount > 0) ? (
                 <Line data={weeklyExpensesChart} options={chartOptions} />
               ) : (
                 <div className="chart-empty-state">
@@ -922,7 +923,7 @@ const Dashboard = () => {
             </div>
             <div className="chart-wrapper">
               {categorySpending.length > 0 &&
-              categorySpending.some((cat) => cat.amount > 0) ? (
+                categorySpending.some((cat) => cat.amount > 0) ? (
                 <Pie data={spendingByCategoryChart} options={chartOptions} />
               ) : (
                 <div className="chart-empty-state">
