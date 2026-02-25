@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Tesseract from 'tesseract.js';
-import { Scan, Loader2 } from 'lucide-react';
+import { Scan, Loader2, Lock, Unlock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/client';
+import { useVault } from '../context/VaultContext';
+import { encryptNote } from '../services/encryption';
+import VaultSetup from '../components/Vault/VaultSetup';
+import VaultUnlock from '../components/Vault/VaultUnlock';
 import './AddExpense.css';
 
 // 1. Added 'transactionToEdit' to props
@@ -20,6 +23,12 @@ const AddExpense = ({ isOpen, onClose, onSuccess, transactionToEdit }) => {
   const [scanProgress, setScanProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Vault States
+  const { isVaultEnabled, isUnlocked, cryptoKey } = useVault();
+  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [showVaultSetup, setShowVaultSetup] = useState(false);
+  const [showVaultUnlock, setShowVaultUnlock] = useState(false);
 
   const { user } = useAuth();
   const currencySymbol = user?.currency === 'INR' ? '₹' : (user?.currency === 'EUR' ? '€' : (user?.currency === 'GBP' ? '£' : '$'));
@@ -87,12 +96,31 @@ const AddExpense = ({ isOpen, onClose, onSuccess, transactionToEdit }) => {
       type: 'expense',
       amount: Number(formData.amount),
       category: formData.category,
-      description: formData.description || '',
       paymentMethod: formData.paymentMethod,
       date: formData.date,
       mood: formData.mood
     };
 
+    if (isEncrypted) {
+      if (!isUnlocked || !cryptoKey) {
+        setShowVaultUnlock(true);
+        return; // pause submission until unlocked
+      }
+      // Encrypt the description on the client
+      encryptNote(formData.description || '', cryptoKey).then((cipherBlob) => {
+        transactionData.isEncrypted = true;
+        transactionData.encryptedData = cipherBlob;
+        transactionData.description = ''; // never send plaintext
+        finalizeSubmit(transactionData);
+      }).catch(err => alert("Encryption failed."));
+    } else {
+      transactionData.isEncrypted = false;
+      transactionData.description = formData.description || '';
+      finalizeSubmit(transactionData);
+    }
+  };
+
+  const finalizeSubmit = (transactionData) => {
     if (transactionToEdit) {
       const id = transactionToEdit._id || transactionToEdit.id;
       if (id) {
@@ -100,30 +128,19 @@ const AddExpense = ({ isOpen, onClose, onSuccess, transactionToEdit }) => {
       }
     }
 
-    setLoading(true);
-    try {
-      const response = await api.post("/api/transactions", transactionData);
+    onAddExpense(transactionData);
+    onClose();
 
-      if (response.data.success) {
-        if (onSuccess) onSuccess();
-        onClose();
-
-        if (!transactionToEdit) {
-          setFormData({
-            amount: '',
-            category: 'food',
-            date: new Date().toISOString().split('T')[0],
-            paymentMethod: 'cash',
-            description: '',
-            mood: 'neutral'
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Failed to add expense:", err);
-      alert("Failed to add expense. Please try again.");
-    } finally {
-      setLoading(false);
+    if (!transactionToEdit) {
+      setFormData({
+        amount: '',
+        category: 'food',
+        date: new Date().toISOString().split('T')[0],
+        paymentMethod: 'cash',
+        description: '',
+        mood: 'neutral'
+      });
+      setIsEncrypted(false);
     }
   };
 
@@ -405,8 +422,38 @@ const AddExpense = ({ isOpen, onClose, onSuccess, transactionToEdit }) => {
           </div>
 
           <div className="expense-form-group">
-            <label htmlFor="description">Notes</label>
-            <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows="2" />
+            <div className="vault-toggle-header">
+              <label htmlFor="description">Notes</label>
+
+              {isVaultEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEncrypted(!isEncrypted)}
+                  className={`vault-toggle-btn ${isEncrypted ? 'encrypted-active' : ''}`}
+                >
+                  {isEncrypted ? <Lock size={14} /> : <Unlock size={14} />}
+                  {isEncrypted ? 'Encrypted' : 'Encrypt Note'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowVaultSetup(true)}
+                  className="vault-setup-prompt-btn"
+                >
+                  <Lock size={14} /> Enable Privacy Vault
+                </button>
+              )}
+            </div>
+
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows="2"
+              placeholder={isEncrypted ? "This note will be encrypted on your device. WalletWise cannot read it." : "Add a note"}
+              className={isEncrypted ? "encrypted-textarea-bg" : ""}
+            />
           </div>
 
           <div className="expense-form-actions">
@@ -418,6 +465,23 @@ const AddExpense = ({ isOpen, onClose, onSuccess, transactionToEdit }) => {
           </div>
         </form>
       </div>
+
+      {showVaultSetup && (
+        <VaultSetup
+          onClose={() => setShowVaultSetup(false)}
+          onSuccess={() => setIsEncrypted(true)}
+        />
+      )}
+
+      {showVaultUnlock && (
+        <VaultUnlock
+          onClose={() => setShowVaultUnlock(false)}
+          onSuccess={() => {
+            // The handleSubmit will need to be clicked again by the user
+            // or we can auto-submit, but keeping it simple for now.
+          }}
+        />
+      )}
     </div>
   );
 };
