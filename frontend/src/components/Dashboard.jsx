@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { DashboardSkeleton } from './SkeletonLoader';
 import './dashboard.css';
 import AddExpense from '../pages/AddExpense';
@@ -16,7 +17,7 @@ import {
   FaBrain, FaArrowUp, FaCalendarAlt,
   FaSync, FaHome, FaExchangeAlt,
   FaCog, FaChartPie,
-  FaMagic
+  FaMagic, FaSun, FaMoon
 } from 'react-icons/fa';
 import { Line, Pie } from 'react-chartjs-2';
 import { toast } from 'react-hot-toast';
