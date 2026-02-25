@@ -376,26 +376,6 @@ const skipNextOccurrence = async (req, res) => {
             message: 'Error skipping next occurrence'
         });
     }
-
-    const balanceChange =
-      transaction.type==='income'
-        ? -transaction.amount
-        : transaction.amount;
-
-    await User.findByIdAndUpdate(userId,{
-      $inc:{walletBalance:balanceChange}
-    });
-
-    res.json({
-      success:true,
-      message:'Transaction deleted successfully',
-      deletedTransaction:transaction
-    });
-
-  }catch(error){
-    console.error('Delete transaction error:',error);
-    res.status(500).json({success:false,message:'Error deleting transaction'});
-  }
 };
 
 const undoTransaction = async (req, res) => {
