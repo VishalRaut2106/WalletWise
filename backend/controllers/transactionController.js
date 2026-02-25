@@ -24,7 +24,9 @@ const transactionSchema = z.object({
     z.date().optional()
   ),
   isRecurring: z.boolean().optional().default(false),
-  recurringInterval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional()
+  recurringInterval: z.enum(['daily', 'weekly', 'monthly']).nullable().optional(),
+  isEncrypted: z.boolean().optional().default(false),
+  encryptedData: z.string().nullable().optional()
 });
 
 const withTransaction = async (operation) => {
@@ -58,7 +60,9 @@ const addTransaction = catchAsync(async (req, res, next) => {
     mood,
     date,
     isRecurring,
-    recurringInterval
+    recurringInterval,
+    isEncrypted,
+    encryptedData
   } = parsed.data;
 
   // Duplicate Detection
@@ -103,7 +107,9 @@ const addTransaction = catchAsync(async (req, res, next) => {
       ...(date ? { date } : {}),
       isRecurring,
       recurringInterval,
-      nextExecutionDate
+      nextExecutionDate,
+      isEncrypted,
+      encryptedData
     });
 
     await transaction.save({ session });

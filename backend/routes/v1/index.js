@@ -9,6 +9,7 @@ const dashboardRoutes = require('../dashboardRoutes');
 const subscriptionRoutes = require('../subscriptionRoutes');
 const insightsRoutes = require('../insightsRoutes');
 const analyticsRoutes = require('../analyticsRoutes');
+const vaultRoutes = require('../vaultRoutes');
 
 const gamificationRoutes = require('../gamificationRoutes');
 
@@ -26,5 +27,6 @@ router.use('/subscriptions', subscriptionRoutes);
 router.use('/insights', insightsRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/gamification', gamificationRoutes);
+router.use('/vault', vaultRoutes);
 
 module.exports = router;
