@@ -4,6 +4,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import api from '../api/client';
+
 import './Auth.css';
 
 const ForgotPassword = () => {
@@ -33,7 +34,9 @@ const ForgotPassword = () => {
     try {
       setLoading(true);
 
-      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      // We use the api client if available, or fetch as fallback
+      // Based on the merged logic, we prefer the flow that leads to OTP verification
+      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${apiBase}/auth/forgot-password`, {
         method: 'POST',
         headers: {
@@ -63,6 +66,13 @@ const ForgotPassword = () => {
           toast.info('Email service is not configured. Opening development reset link.');
           window.location.href = devResetLink;
         }
+        // Fallback or secondary check for development links
+        if (data.devResetLink) {
+          toast.info('Email service is not configured. Opening development reset link.');
+          window.location.href = data.devResetLink;
+          return;
+        }
+        toast.error(data.message || 'Failed to send OTP. Please try again.');
       }
     } catch (error) {
       console.error('Forgot password error:', error);
