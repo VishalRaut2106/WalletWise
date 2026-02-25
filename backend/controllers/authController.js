@@ -228,13 +228,18 @@ const register = asyncHandler(async (req, res) => {
 
   await user.setPassword(password);
 
-  // Skip email verification locally
-  user.emailVerified = true;
+  await User.saveWithUniqueStudentId(user);
 
+  // Skip email verification for local testing
+  user.emailVerified = true;
   await user.save();
 
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
+
+
+
+
   user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
   await user.save();
 
@@ -300,6 +305,13 @@ const login = asyncHandler(async (req, res) => {
 
    
 
+const logout = asyncHandler(async (req, res) => {
+  clearAuthCookies(res);
+  return res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+});
 
 const refresh = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies.refresh_token;
@@ -646,13 +658,7 @@ const verifyPasswordResetOtp = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-const logout = asyncHandler(async (req, res) => {
-  clearAuthCookies(res);
-  return res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
-});
+
 module.exports = {
   register,
   login,
