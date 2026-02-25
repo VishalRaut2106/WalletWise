@@ -21,6 +21,7 @@ import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import DecisionHelper from './pages/DecisionHelper';
 import MoodInsight from './pages/MoodInsight';
+import InvestmentSimulator from './pages/InvestmentSimulator';
 import ScrollToTop from './components/ScrollToTop/ScrollToTop';
 
 // Import authentication components
@@ -260,6 +261,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MoodInsight />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/simulator"
+                element={
+                  <ProtectedRoute>
+                    <InvestmentSimulator />
                   </ProtectedRoute>
                 }
               />

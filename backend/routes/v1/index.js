@@ -9,6 +9,7 @@ const dashboardRoutes = require('../dashboardRoutes');
 const subscriptionRoutes = require('../subscriptionRoutes');
 const insightsRoutes = require('../insightsRoutes');
 const analyticsRoutes = require('../analyticsRoutes');
+const investmentRoutes = require('../investmentRoutes');
 
 // Health check inside v1
 router.get('/health', (req, res) => {
@@ -23,5 +24,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/insights', insightsRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/investments', investmentRoutes);
 
 module.exports = router;

@@ -16,7 +16,7 @@ import {
   FaBrain, FaArrowUp, FaCalendarAlt,
   FaSync, FaHome, FaExchangeAlt,
   FaCog, FaChartPie,
-  FaMagic
+  FaMagic, FaSun, FaMoon
 } from 'react-icons/fa';
 import { Line, Pie } from 'react-chartjs-2';
 import { toast } from 'react-hot-toast';
@@ -139,6 +139,7 @@ const Dashboard = () => {
       path: "/transactions",
     },
     { id: "budget", label: "Budget", icon: FaChartPie, path: "/budget" },
+    { id: "simulator", label: "Simulator", icon: FaChartLine, path: "/simulator" },
     { id: "goals", label: "Goals", icon: FaBullseye, path: "/goals" },
     { id: "reports", label: "Reports", icon: FaChartBar, path: "/reports" },
     { id: "subscriptions", label: "Subscriptions", icon: FaCog, path: "/subscriptions" },
@@ -605,7 +606,7 @@ const Dashboard = () => {
 
               <div className="dropdown-divider"></div>
 
-             <Link
+              <Link
                 to="/profile"
                 className="dropdown-item"
                 role="menuitem"
@@ -631,11 +632,11 @@ const Dashboard = () => {
               <div className="dropdown-divider"></div>
 
               <button
-                  onClick={handleLogout}
-                  className="dropdown-item logout"
-                  role="menuitem"
-                  title="Logout"
-                >
+                onClick={handleLogout}
+                className="dropdown-item logout"
+                role="menuitem"
+                title="Logout"
+              >
                 <FaSignOutAlt />
                 <span>Logout</span>
               </button>
@@ -898,7 +899,7 @@ const Dashboard = () => {
             </div>
             <div className="chart-wrapper">
               {weeklyExpenses.length > 0 &&
-              weeklyExpenses.some((exp) => exp.amount > 0) ? (
+                weeklyExpenses.some((exp) => exp.amount > 0) ? (
                 <Line data={weeklyExpensesChart} options={chartOptions} />
               ) : (
                 <div className="chart-empty-state">
@@ -922,7 +923,7 @@ const Dashboard = () => {
             </div>
             <div className="chart-wrapper">
               {categorySpending.length > 0 &&
-              categorySpending.some((cat) => cat.amount > 0) ? (
+                categorySpending.some((cat) => cat.amount > 0) ? (
                 <Pie data={spendingByCategoryChart} options={chartOptions} />
               ) : (
                 <div className="chart-empty-state">
