@@ -61,7 +61,6 @@ const Transactions = () => {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   // Vault Mechanics
   const { isVaultEnabled, isUnlocked, cryptoKey } = useVault();
@@ -133,27 +132,16 @@ const Transactions = () => {
 
       console.log('Fetching with params:', params);
 
-      const response = await api.get('/api/transactions', { params, signal });
+      const response = await api.get('/transactions', { params, signal });
 
       if (response.data?.success) {
         setTransactions(response.data.transactions || []);
         if (response.data.pagination) {
           setTotalPages(response.data.pagination.pages);
         }
-      } else {
-        setError('Failed to load transactions.');
       }
     } catch (err) {
-      if (err.name === 'CanceledError' || err.name === 'AbortError') {
-        console.log('Request aborted');
-        return; // Early return to avoid updating state
-      }
-      console.error('Transactions fetch error:', err);
-      if (err.response?.status === 401) {
-        navigate('/login');
-      } else {
-        setError('Could not connect to server.');
-      }
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return;
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -240,6 +228,20 @@ const Transactions = () => {
     downloadFile(content, `transactions_export.${ext}`, 'text/plain;charset=utf-8;');
   };
 
+  const handleSkip = async (id) => {
+    if (!window.confirm('Are you sure you want to skip the next occurrence of this recurring transaction?')) return;
+    try {
+      const response = await api.post(`/api/transactions/${id}/skip`);
+      if (response.data?.success) {
+        alert('Next occurrence skipped successfully!');
+        fetchTransactions();
+      }
+    } catch (err) {
+      console.error('Failed to skip transaction:', err);
+      alert(err.response?.data?.message || 'Failed to skip transaction. Please try again.');
+    }
+  };
+
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
@@ -251,19 +253,6 @@ const Transactions = () => {
     return (
       <div className="transactions-page">
         <div className="page-loading">Loading transactions...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="transactions-page">
-        <div className="page-error">
-          <p>{error}</p>
-          <button className="primary-button" onClick={() => window.location.reload()}>
-            Try Again
-          </button>
-        </div>
       </div>
     );
   }
@@ -383,6 +372,7 @@ const Transactions = () => {
                   <th>Note</th>
                   <th>Amount</th>
                   <th>Mood</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -422,6 +412,18 @@ const Transactions = () => {
                           </span>
                           {mood.label}
                         </span>
+                      </td>
+                      <td>
+                        {tx.isRecurring && (
+                          <button 
+                            className="ghost-button skip-button"
+                            onClick={() => handleSkip(tx._id || tx.id)}
+                            title="Skip Next Occurrence"
+                            style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                          >
+                            Skip Next
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

@@ -101,7 +101,7 @@ const AddIncome = ({ isOpen, onClose, onSuccess }) => {
       });
       setIsEncrypted(false);
     } catch (err) {
-      console.error('Error adding income:', err);
+      // Interceptor handles the toast
     } finally {
       setLoading(false);
     }
