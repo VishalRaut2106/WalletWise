@@ -201,10 +201,11 @@ const register = asyncHandler(async (req, res) => {
   if (existing) {
     return res.status(400).json({
       success: false,
-      message: 'Registration failed. Please check your details.'
+      message: 'User already exists with this email or student ID'
     });
   }
 
+  // ✅ Create user properly
   const user = new User({
     studentId,
     fullName,
@@ -531,6 +532,11 @@ const updateProfile = asyncHandler(async (req, res) => {
     user.avatar = myCloud.secure_url;
   }
 
+  // const {
+  //   fullName, phoneNumber, department, year,
+  //   currency, dateFormat, language, theme,
+  //   incomeFrequency, incomeSources, priorities, riskTolerance
+  // } = parsed.data;
   const {
   fullName, phoneNumber, department, year,
   currency, dateFormat, language, theme,

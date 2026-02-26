@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Transaction = require('../models/Transactions');
 const User = require('../models/User');
+
+const STRICT_MODE = process.env.STRICT_WALLET_BALANCE === "true";
 const { z } = require('zod');
 const { isValidObjectId } = require('../utils/validation');
 const logTransactionActivity = require("../utils/activityLogger");
@@ -111,36 +113,11 @@ const addTransaction = catchAsync(async (req, res, next) => {
         if (isRecurring && recurringInterval) {
             const now = new Date();
 
-            if (recurringInterval === "daily") now.setDate(now.getDate() + 1);
-            else if (recurringInterval === "weekly") now.setDate(now.getDate() + 7);
-            else if (recurringInterval === "monthly") now.setMonth(now.getMonth() + 1);
+    const balanceChange = type === "income" ? amount : -amount;
 
-            nextExecutionDate = now;
-        }
-
-        const transaction = new Transaction({
-            userId,
-            type,
-            amount,
-            category,
-            description,
-            paymentMethod,
-            mood,
-            ...(date ? { date } : {}),
-            isRecurring,
-            recurringInterval,
-            nextExecutionDate
-        });
-
-        await transaction.save({ session });
-
-        const balanceChange = type === 'income' ? amount : -amount;
-
-        await User.findByIdAndUpdate(
-            userId,
-            { $inc: { walletBalance: balanceChange } },
-            { session }
-        );
+    await User.findByIdAndUpdate(userId, {
+        $inc: { walletBalance: balanceChange }
+    });
 
         // Gamification
         const userDoc = await User.findById(userId).session(session);
@@ -473,22 +450,29 @@ const skipNextOccurrence = async (req, res) => {
         const userId = req.userId;
 
         if (!isValidObjectId(id)) {
-            return res.status(400).json({ success: false, message: 'Invalid transaction ID format' });
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid transaction ID format'
+            });
         }
 
         const transaction = await Transaction.findOne({ _id: id, userId });
 
         if (!transaction) {
-            return res.status(404).json({ success: false, message: 'Transaction not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Transaction not found'
+            });
         }
 
         if (!transaction.isRecurring || !transaction.nextExecutionDate) {
-            return res.status(400).json({ success: false, message: 'Transaction is not recurring or has no next execution date' });
+            return res.status(400).json({
+                success: false,
+                message: 'Transaction is not recurring'
+            });
         }
 
-        // Calculate the next occurrence date
-        const currentNextDate = new Date(transaction.nextExecutionDate);
-        let updatedNextDate = new Date(currentNextDate);
+        let updatedNextDate = new Date(transaction.nextExecutionDate);
 
         if (transaction.recurringInterval === "daily") {
             updatedNextDate.setDate(updatedNextDate.getDate() + 1);
