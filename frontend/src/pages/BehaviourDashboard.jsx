@@ -61,9 +61,9 @@ const BehaviourDashboard = () => {
       setError('');
       try {
         const [summaryRes, txRes, insightsRes] = await Promise.all([
-          api.get('/api/dashboard/summary'),
-          api.get('/api/transactions'),
-          api.get('/api/insights/summary')
+          api.get('/dashboard/summary'),
+          api.get('/transactions'),
+          api.get('/insights/summary')
         ]);
 
         if (!isMounted) return;

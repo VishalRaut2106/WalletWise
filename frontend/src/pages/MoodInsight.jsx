@@ -21,7 +21,7 @@ const MoodInsight = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/api/insights/mood-correlation');
+      const res = await api.get('/insights/mood-correlation');
       setData(res.data.moodCorrelation);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load data');
