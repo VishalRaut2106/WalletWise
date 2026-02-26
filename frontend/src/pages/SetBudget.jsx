@@ -199,7 +199,7 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
     };
 
     try {
-      const response = await api.post('/api/budget', budgetData);
+      const response = await api.post('/budget', budgetData);
 
       if (response.data.success) {
         toast.success(response.data.notification?.message || 'Budget set succesfully.', {
@@ -235,7 +235,7 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.get('/api/analytics/forecast');
+      const { data } = await api.get('/analytics/forecast');
       if (data && data.forecasts) {
         const totalBudget = data.overallSuggestion || 0;
 
