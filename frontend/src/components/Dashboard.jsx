@@ -169,6 +169,7 @@ const Dashboard = () => {
       path: "/transactions",
     },
     { id: "budget", label: "Budget", icon: FaChartPie, path: "/budget" },
+    { id: "simulator", label: "Simulator", icon: FaChartLine, path: "/simulator" },
     { id: "goals", label: "Goals", icon: FaBullseye, path: "/goals" },
     { id: "gamification", label: "Rewards", icon: FaTrophy, path: "/gamification" },
     { id: "wallets", label: "Shared Wallets", icon: FaWallet, path: "/wallets" },
@@ -442,6 +443,90 @@ const Dashboard = () => {
         borderColor: "#ffffff",
       },
     ],
+  };
+
+  // Cumulative Projection Chart
+  const todayDate = new Date();
+  const currentDayNum = todayDate.getDate();
+  const daysInMonthNum = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+
+  // Create an array of days from 1 to daysInMonth
+  const monthLabels = Array.from({ length: daysInMonthNum }, (_, i) => i + 1);
+
+  // Calculate daily pace
+  const dailyPaceValue = stats.spentThisMonth / Math.max(currentDayNum, 1);
+
+  // Actual spending up to today
+  const actualData = monthLabels.map(day => {
+    if (day <= currentDayNum) {
+      return dailyPaceValue * day; // simplified approximation for the chart
+    }
+    return null; // hide tail
+  });
+
+  // Projected spending dotted line from today to end of month
+  const projectedData = monthLabels.map(day => {
+    if (day >= currentDayNum) {
+      return dailyPaceValue * day;
+    }
+    return null; // hide prefix
+  });
+
+  const projectionChartData = {
+    labels: monthLabels,
+    datasets: [
+      {
+        label: "Actual Spent",
+        data: actualData,
+        borderColor: "#3b82f6",
+        backgroundColor: "rgba(59, 130, 246, 0.1)",
+        fill: true,
+        tension: 0.2,
+        borderWidth: 3,
+      },
+      {
+        label: "Projected Trend",
+        data: projectedData,
+        borderColor: "#94a3b8",
+        borderDash: [5, 5], // Dotted line
+        fill: false,
+        tension: 0.2,
+        borderWidth: 2,
+      }
+    ]
+  };
+
+  if (stats.monthlyBudget > 0) {
+    projectionChartData.datasets.push({
+      label: "Budget Limit",
+      data: monthLabels.map(() => stats.monthlyBudget),
+      borderColor: "#ef4444",
+      borderWidth: 1,
+      fill: false,
+      pointRadius: 0,
+      borderDash: [2, 2]
+    });
+  }
+
+  const projectionOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "top", labels: { usePointStyle: true } },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            const currency = user?.currency || 'USD';
+            const locale = currency === 'INR' ? 'en-IN' : 'en-US';
+            return context.dataset.label + ': ' + new Intl.NumberFormat(locale, { style: 'currency', currency }).format(context.raw);
+          }
+        }
+      }
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.5)" } },
+      x: { title: { display: true, text: 'Day of Month' }, grid: { display: false } }
+    }
   };
 
   const chartOptions = {
@@ -925,6 +1010,16 @@ const Dashboard = () => {
 
         {/* Charts Section with Empty States */}
         <div className="charts-section">
+          <div className="chart-container">
+            <div className="chart-header">
+              <h3>Monthly Pacing & Projection</h3>
+              <span className="chart-subtitle">Where you'll end up this month</span>
+            </div>
+            <div className="chart-wrapper">
+              <Line data={projectionChartData} options={projectionOptions} />
+            </div>
+          </div>
+
           <div className="chart-container">
             <div className="chart-header">
               <h3>Weekly Expenses</h3>

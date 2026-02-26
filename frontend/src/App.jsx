@@ -276,6 +276,10 @@ function App() {
                   <ProtectedRoute>
                     <GamificationDashboard />
               <Route
+                path="/simulator"
+                element={
+                  <ProtectedRoute>
+                    <InvestmentSimulator />
                 path="/wallets"
                 element={
                   <ProtectedRoute>
