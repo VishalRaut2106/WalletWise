@@ -85,13 +85,13 @@ const Budget = () => {
       };
 
       try {
-        const { data } = await api.get('/api/budget/stats/summary');
+        const { data } = await api.get('/budget/stats/summary');
 
         if (data?.success && data?.hasBudget) {
           mapBudget(data.summary);
         } else if (data?.success && !data?.hasBudget) {
           try {
-            const current = await api.get('/api/budget/current');
+            const current = await api.get('/budget/current');
             if (current?.data?.success && current?.data?.budget) {
               mapBudget(current.data.budget);
             } else {
@@ -113,7 +113,7 @@ const Budget = () => {
       } catch (err) {
         console.error('Failed to load budget summary:', err);
         try {
-          const current = await api.get('/api/budget/current');
+          const current = await api.get('/budget/current');
           if (current?.data?.success && current?.data?.budget) {
             mapBudget(current.data.budget);
           } else if (err.response?.status === 401) {
@@ -135,7 +135,7 @@ const Budget = () => {
 
     const fetchForecast = async () => {
       try {
-        const { data } = await api.get('/api/analytics/forecast');
+        const { data } = await api.get('/analytics/forecast');
         if (data && data.forecasts) {
           setForecastData(data.forecasts);
         }
