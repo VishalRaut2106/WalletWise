@@ -199,33 +199,18 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
     };
 
     try {
-      const response = await api.post('/api/budget', budgetData);
+      const response = await api.post('/budget', budgetData);
 
       if (response.data.success) {
         toast.success(response.data.notification?.message || 'Budget set succesfully.', {
-          style: {
-            background: '#16a34a',
-            color: '#ffffff'
-          },
-          iconTheme: {
-            primary: '#bbf7d0',
-            secondary: '#166534'
-          }
+          style: { background: '#16a34a', color: '#ffffff' },
+          iconTheme: { primary: '#bbf7d0', secondary: '#166534' }
         });
-
-        // Call parent callback
-        if (onSetBudget) {
-          onSetBudget(response.data.budget);
-        }
-
-        // Close modal
+        if (onSetBudget) onSetBudget(response.data.budget);
         onClose();
-      } else {
-        throw new Error(response.data.message || 'Failed to set budget');
       }
     } catch (err) {
-      console.error('Budget set error:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to set budget. Please try again.');
+      // Interceptor handles the toast
     } finally {
       setLoading(false);
     }
@@ -235,7 +220,7 @@ const SetBudget = ({ isOpen, onClose, onSetBudget }) => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.get('/api/analytics/forecast');
+      const { data } = await api.get('/analytics/forecast');
       if (data && data.forecasts) {
         const totalBudget = data.overallSuggestion || 0;
 
